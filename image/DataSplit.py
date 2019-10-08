@@ -1,6 +1,7 @@
 from typing import *
 from pathlib import *
 
+import math
 import numpy as np
 import pandas as pd
 import tensorflow as tf
@@ -145,7 +146,7 @@ class DataSplit:
         """
         Function that reads **and normalizes /255** an image file.
         """
-        image = tf.image.decode_jpeg(tf.io.read_file(filename), channels=0)
+        image = tf.image.decode_jpeg(tf.io.read_file(filename), channels=3)
         image = tf.cast(image, tf.float32)
         if image.shape[2] == 1:
             image = tf.reshape(image, (image.shape[0], image.shape[1]))

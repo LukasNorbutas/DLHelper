@@ -4,6 +4,8 @@ from pathlib import *
 import tensorflow as tf
 from tensorflow import keras
 
+import tempfile
+
 import matplotlib.pyplot as plt
 import numpy as np
 

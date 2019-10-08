@@ -289,6 +289,9 @@ class CNNLearner:
         else:
             weights = None
 
+        reduce_lr_patience = max(2, epochs // 4)
+        early_stopping_patience = reduce_lr_patience * 2
+
         self.history = self.model.fit(
             x=self.data.train,
             steps_per_epoch=self.data.train.steps,
@@ -411,12 +414,12 @@ class CNNLearner:
         self.lr_finder = lr_finder
 
     def plot_lr(self,
-        lr_finder: LearningRateFinder,
+        lr_finder: LearningRateFinder = None,
         skip_begin=5,
         skip_end=20):
         """
         Plots lr_finder's results.
         """
-        if not lr_finder:
+        if lr_finder == None:
             lr_finder = self.lr_finder
         return lr_finder.plot_loss(skip_begin=skip_begin, skip_end=skip_end)
