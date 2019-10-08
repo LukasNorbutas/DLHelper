@@ -9,7 +9,6 @@ from tensorflow import keras
 from .Resizer import Resizer
 from .Augmentor import Augmentor
 from .DataRaw import DataRaw
-from .image_typing import DataRawType, AugmentorType, ResizerType
 
 class DataSplit:
     """
@@ -48,9 +47,9 @@ class DataSplit:
     """
 
     def __init__(self,
-        data: DataRawType,
+        data: DataRaw,
         val_test_size: Tuple[float, float],
-        aug: Union[AugmentorType, None] = None,
+        aug: Union[Augmentor, None] = None,
         downsample: Union[List[float], None] = None,
         upsample: float = 0.,
         batch_size: int = 8,
@@ -78,7 +77,7 @@ class DataSplit:
         val_test_size: Tuple[float, float],
         train_shuffle: bool,
         batch_size: int,
-        aug: AugmentorType,
+        aug: Augmentor,
         downsample: List[float],
         upsample: float,
         prefetch: int,
@@ -121,8 +120,8 @@ class DataSplit:
 
     def _df_to_ds(self,
         data: pd.DataFrame,
-        aug: Union[AugmentorType, None] = None,
-        resize: Union[ResizerType, None] = None,
+        aug: Union[Augmentor, None] = None,
+        resize: Union[Resizer, None] = None,
         downsample: Union[List[float], None] = None) -> tf.data.Dataset:
         """
         Converts a dataframe with image paths and labels to a tf.data.Dataset. Maps image reader,
@@ -217,7 +216,7 @@ class DataSplit:
 
 
     def reaugment(self,
-        aug: AugmentorType) -> None:
+        aug: Augmentor) -> None:
         """
         This function reaugments the DataSplit.train dataset with a new augmentor, and stores the new dataset
         and augmentor in the class instance as DataSplit.train and DataSplit.aug.

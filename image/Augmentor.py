@@ -26,6 +26,8 @@ class Augmentor:
         hue: Tuple[float, float] = (0., 0.),
         blur: Tuple[float, Tuple[float, float]] = (0., 0.),
         warp: float = 0.,
+        zoom: Tuple[float, float] = (0., 0.),
+        rotate: Tuple[float, float] = (0., 0.),
         pipeline: Optional[List[Any]] = None):
 
         self.h_flip = h_flip
@@ -35,6 +37,8 @@ class Augmentor:
         self.hue = hue
         self.blur = blur
         self.warp = warp
+        self.zoom = zoom
+        self.rotate = rotate
         self.pipeline = pipeline
 
     def __call__(self,
@@ -88,6 +92,23 @@ class Augmentor:
                 return iaa.PerspectiveTransform(scale=(0, self.warp), keep_size=True).augment_images(image)
             img_exp = tf.expand_dims(image, axis=0)
             image = tf.py_function(augmenter, [img_exp], Tout=[tf.float32])
+            image = tf.squeeze(image)
+
+        # Zoom
+        if self.zoom[0]:
+            augmenter = iaa.Sometimes(self.zoom[0],
+                                      iaa.Affine(scale=(1-self.zoom[1],1+self.zoom[1]), mode="edge"))
+            img_exp = tf.expand_dims(image, axis=0)
+            image = tf.py_function(augmenter.augment_images, [img_exp], Tout=[tf.float32])
+            image = tf.squeeze(image)
+
+        # Rotate
+        if self.rotate[0]:
+            augmenter = iaa.Sometimes(self.rotate[0],
+                                      iaa.Affine(rotate=(-self.rotate[1], self.rotate[1]),
+                                                mode="edge"))
+            img_exp = tf.expand_dims(image, axis=0)
+            image = tf.py_function(augmenter.augment_images, [img_exp], Tout=[tf.float32])
             image = tf.squeeze(image)
 
         image.set_shape(input_shape)

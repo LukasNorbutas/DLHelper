@@ -1,5 +1,8 @@
+from typing import *
+from pathlib import *
+
 import os
-import .get_image_size
+from .get_image_size import get_image_size
 
 def file_getter(self,
     directory: str) -> List[str]:

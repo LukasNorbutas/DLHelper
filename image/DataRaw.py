@@ -1,11 +1,14 @@
 from typing import *
 from pathlib import *
 
+import tensorflow as tf
+
 from sklearn.preprocessing import MultiLabelBinarizer, LabelBinarizer
 
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+import seaborn as sns
 import math
 import re
 
@@ -52,6 +55,8 @@ class DataRaw:
 
     def init_df(self,
         dataframe_path: Union[str, Path] = None,
+        label_col: str = None,
+        id_col: str = None,
         sep: Optional[str] = ",",
         y_source: Optional[str] = "filenames",
         y_regex: Optional[str] = "",
@@ -92,10 +97,12 @@ class DataRaw:
             self.df = self._df_no_csv(y_source, y_regex, get_resolution)
 
         if (dataframe_path != None):
-            self.df = self._df_from_csv(dataframe_path, sep, get_resolution)
+            self.df = self._df_from_csv(dataframe_path, label_col, id_col, sep, get_resolution)
 
     def _df_from_csv(self,
         dataframe_path: str,
+        label_col: str,
+        id_col: str,
         sep: str,
         get_resolution: bool) -> pd.DataFrame:
         """
@@ -110,12 +117,14 @@ class DataRaw:
             get_resolution: add "height" and "weight" dimensions for each image to the dataframe (takes some time).
         """
         df = pd.read_csv(dataframe_path, sep=sep)
-        if len(df.columns) == 2:
-            df.columns = ["id", "label"]
-        else:
-            col_name_list = list(df.columns)
-            col_name_list[0] = "id"
-            df.columns = col_name_list
+        if (id_col != "id") & ("id" in df.columns) in df.columns:
+            df = df.rename(mapper={"id": "id_from_csv"})
+        if (label_col != "label") & ("label" in df.columns) in df.columns:
+            df = df.rename(mapper={"label": "label_from_csv"})
+        df = pd.concat([df[[id_col, label_col]], df.drop([id_col, label_col], axis=1)], axis=1)
+        df_cols = list(df.columns)
+        df_cols[:2] = ["id", "label"]
+        df.columns = df_cols
         df = self._extension_check(df)
         df = self._prepend_parent_dirs(df)
         if get_resolution:
@@ -275,31 +284,31 @@ class DataRaw:
             cmap: use custom matplotlib colormap for displaying images.
             figsize: size of the figure with displayed images.
         """
-            df=self.df.copy()
-            if "height" not in df.columns:
-                df["height"] = df["id"].map(partial(utils.get_image_resolution, dim=0))
-                df["width"] = df["id"].map(partial(utils.get_image_resolution, dim=1))
-            df_copy = pd.DataFrame(
-                df.loc[(df["height"]/df["width"] > 2) |
-                            (df["height"]/df["width"] < 0.6), "id"]
-            )
-            if len(df_copy) > 0:
-                print(f"Found {df_copy} skewed images.")
-                df_copy["ratio"] = df["height"]/df["width"]
-                df_copy.sort_values("ratio", inplace=True)
-                df_copy.reset_index(inplace=True, drop=True)
+        df = self.df.copy()
+        if "height" not in df.columns:
+            df["height"] = df["id"].map(partial(utils.get_image_resolution, dim=0))
+            df["width"] = df["id"].map(partial(utils.get_image_resolution, dim=1))
+        df_copy = pd.DataFrame(
+            df.loc[(df["height"]/df["width"] > 2) |
+                        (df["height"]/df["width"] < 0.6), "id"]
+        )
+        if len(df_copy) > 0:
+            print(f"Found {df_copy} skewed images.")
+            df_copy["ratio"] = df["height"]/df["width"]
+            df_copy.sort_values("ratio", inplace=True)
+            df_copy.reset_index(inplace=True, drop=True)
 
-                plt.figure(figsize=figsize)
-                subplot_index = 1
+            plt.figure(figsize=figsize)
+            subplot_index = 1
 
-                for img_index in [i for j in (range(n_img), range(len(df_copy)-n_img,len(df_copy))) for i in j]:
-                    plt.subplot(n_img-1,3,subplot_index)
-                    image_string = tf.io.read_file(df_copy.loc[img_index, "id"])
-                    image = tf.image.decode_jpeg(image_string, channels=3)
-                    plt.imshow(image, cmap=cmap)
-                    subplot_index += 1
-            else:
-                print("No skewed images found.")
+            for img_index in [i for j in (range(n_img), range(len(df_copy)-n_img,len(df_copy))) for i in j]:
+                plt.subplot(n_img-1,3,subplot_index)
+                image_string = tf.io.read_file(df_copy.loc[img_index, "id"])
+                image = tf.image.decode_jpeg(image_string, channels=3)
+                plt.imshow(image, cmap=cmap)
+                subplot_index += 1
+        else:
+            print("No skewed images found.")
 
 
     def show_images(self,
@@ -307,41 +316,51 @@ class DataRaw:
         cmap: str = None,
         figsize: Tuple[int, int] = (10,6)) -> None:
         """
-        Display an example of each class or some classes from DataRaw.df.
+        Display an example of random images from DataRaw.df.
 
         # Arguments
-            n_img: number of images to display. Number of images has to be <= number of classes if label encoded
-                as categorical.
+            n_img: number of images to display.
             cmap: use custom matplotlib color scheme for displaying images.
             figsize: size of the figure with displayed images.
         """
-            if n_img > len(self.label_map):
-                n_img = len(self.label_map)
-            select_df = self.df.sample(frac=1)
-            select_df = select_df.groupby('label').first().reset_index()
-            fig, ax = plt.subplots(math.ceil(n_img/3), 3, figsize=figsize)
-            ax = ax.ravel()
-            for i in range(n_img):
-                img = tf.image.decode_jpeg(tf.io.read_file(select_df.iloc[i,1]))
-                ax[i].imshow(img)
-                ax[i].set_title(select_df.iloc[i,0])
-
-            for i in range(n_img - math.ceil(n_img/3)*3,n_img):
-                fig.delaxes(ax.flatten()[i])
-                plt.show()
-
+        select_df = self.df.sample(n=n_img)
+        fig, ax = plt.subplots(math.ceil(n_img/3), 3, figsize=figsize, squeeze=False,
+            gridspec_kw={'hspace': 0.2})
+        ax = ax.ravel()
+        for i in range(n_img):
+            img = tf.image.decode_jpeg(tf.io.read_file(select_df.iloc[i,0]))
+            ax[i].imshow(img)
+            ax[i].set_title(select_df.iloc[i,1])
+        if n_img % 3 != 0:
+            for i in range((n_img % 3)+1):
+                ax.flat[-1-i].set_visible(False)
+        plt.show()
 
     def describe(self) -> None:
         """
         Print out descriptive statistics of the DataRaw.df.
         """
-        if self.multilabel:
-            target = self.df[self.df.columns[~self.df.columns.isin(["id", "label", "img_id", "height", "width"])]]
-            target_sums = target.apply(np.sum, axis=0).sort_values(ascending=False)
-            print(f"The data contain {len(self.df)} examples of {len(label_map)} categories. The highest/lowest category counts are",
-                f"\n'{target_sums.index[0]}': {target_sums[0]} and '{target_sums.index[-1]}': {target_sums[-1]}")
+        if not self.y_multilabel:
+            target_sums = self.df.groupby("label")["id"].count().sort_values(ascending=False)
+            print(f"The data contain {len(self.df)} examples of {len(self.df.label.unique())} categories. The highest/lowest category counts are",
+                f"\n'{self.label_map[target_sums.head(1).index.item()]}': {target_sums.iloc[0]} and",
+                f"'{self.label_map[target_sums.tail(1).index.item()]}': {target_sums.iloc[-1]}")
             plt.figure(figsize=(10,10))
             plt.xticks(rotation=45)
+            plt.title("Label distribution")
+            sns.barplot(y=target_sums.index, x=target_sums, orient='h')
+            plt.show()
+
+            self.show_images(n_img=6)
+
+        if self.y_multilabel:
+            target = self.df[self.df.columns[~self.df.columns.isin(["id", "label", "img_id", "height", "width"])]]
+            target_sums = target.apply(np.sum, axis=0).sort_values(ascending=False)
+            print(f"The data contain {len(self.df)} examples of {len(self.label_map)} categories. The highest/lowest category counts are",
+            f"{target_sums.index.iloc[0]}': {target_sums.iloc[0]} and '{target_sums.index.iloc[-1]}: {target_sums.iloc[-1]}")
+            plt.figure(figsize=(10,10))
+            plt.xticks(rotation=45)
+            plt.title("Label distribution")
             sns.barplot(y=target_sums.index, x=target_sums, orient='h')
             plt.show()
             print(f"\n\nLabel per image stats:\n{self.df.label.map(len).describe()[[1,3,4,5,6,7]]}")

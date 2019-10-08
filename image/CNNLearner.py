@@ -7,6 +7,7 @@ from pathlib import *
 from typing import *
 
 from .LearningRateFinder import LearningRateFinder
+from .DataSplit import DataSplit
 from .TrainCycle import TrainCycle
 from .discriminative_lr import DLR_Adam, get_lr_multipliers, layer_to_param_dict
 
@@ -269,9 +270,10 @@ class CNNLearner:
     def fit(self,
         epochs: int,
         name: str,
-        verbose: Optional[int] = 1,
         lr: Optional[Union[float, Tuple[float], Tuple[float, float]]],
-        class_weights: Optional[dict] = None):
+        class_weights: Optional[dict] = None,
+        verbose: Optional[int] = 1
+        ):
         """
         Do N epochs of training. Saves best model weights to an h5 file. Uses early stopping
         and ReduceLROnPlateau callbacks. Stores the output weights file to self.previous_weights.
