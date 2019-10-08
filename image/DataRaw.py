@@ -117,10 +117,10 @@ class DataRaw:
             get_resolution: add "height" and "weight" dimensions for each image to the dataframe (takes some time).
         """
         df = pd.read_csv(dataframe_path, sep=sep)
-        if (id_col != "id") & ("id" in df.columns) in df.columns:
-            df = df.rename(mapper={"id": "id_from_csv"})
+        if (id_col != "id") & ("id" in df.columns):
+            df = df.rename(mapper={"id": "id_from_csv"}, axis=1)
         if (label_col != "label") & ("label" in df.columns) in df.columns:
-            df = df.rename(mapper={"label": "label_from_csv"})
+            df = df.rename(mapper={"label": "label_from_csv"}, axis=1)
         df = pd.concat([df[[id_col, label_col]], df.drop([id_col, label_col], axis=1)], axis=1)
         df_cols = list(df.columns)
         df_cols[:2] = ["id", "label"]
@@ -312,6 +312,7 @@ class DataRaw:
 
 
     def show_images(self,
+        df: pd.DataFrame = None,
         n_img: int = 3,
         cmap: str = None,
         figsize: Tuple[int, int] = (10,6)) -> None:
@@ -323,7 +324,10 @@ class DataRaw:
             cmap: use custom matplotlib color scheme for displaying images.
             figsize: size of the figure with displayed images.
         """
-        select_df = self.df.sample(n=n_img)
+        if type(df) is not pd.DataFrame:
+            select_df = self.df.sample(n=n_img)
+        else:
+            select_df = df.sample(n=n_img)
         fig, ax = plt.subplots(math.ceil(n_img/3), 3, figsize=figsize, squeeze=False,
             gridspec_kw={'hspace': 0.2})
         ax = ax.ravel()
