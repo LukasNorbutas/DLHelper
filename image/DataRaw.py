@@ -1,3 +1,4 @@
+from functools import partial
 from typing import *
 from pathlib import *
 
@@ -5,14 +6,15 @@ import tensorflow as tf
 
 from sklearn.preprocessing import MultiLabelBinarizer, LabelBinarizer
 
-import pandas as pd
 import numpy as np
-import matplotlib.pyplot as plt
-import seaborn as sns
 import math
+import matplotlib.pyplot as plt
+import multiprocessing as mp
+import pandas as pd
+import seaborn as sns
 import re
 
-
+from .utils.tf_resizer import tf_resizer
 from .utils.utils import *
 
 
@@ -209,7 +211,7 @@ class DataRaw:
                     one_hot_cols = pd.get_dummies(self.df.label.map(self.label_map))
                     self.df = pd.concat([self.df, one_hot_cols], axis=1)
                 elif not one_hot:
-                    if type(self.df.label[0]) == str:
+                    if (type(self.df.label[0]) == str):
                         reverse_dict = dict([(v,k) for k,v in self.label_map.items()])
                         self.df.label = self.df.label.map(reverse_dict)
 
@@ -339,6 +341,38 @@ class DataRaw:
             for i in range((n_img % 3)+1):
                 ax.flat[-1-i].set_visible(False)
         plt.show()
+
+
+    def rescale_input_images(self,
+        new_dir: str,
+        data_dir: Path,
+        scale_size: float = 1.,
+        dims: Optional[Tuple[int, int]] =(None, None)):
+        """
+        Downscale images in the train folder to make training faster.
+        This function takes all train images, rescales them, puts them to "train"
+        directory, and moves the original images to "new_dir" directory.
+
+        # Arguments:
+            new_dir: directory name, which will store the original unscaled images
+            scale_size: multiplier for image height and with (> 1 = upscaling,
+                < 1 = downscaling, 0.5 = shrink images by a half)
+            dims: alternatively, specify new dimensions separately in absolute
+                numbers. WARNING: if new dimension ratio differs from the original,
+                it might skew the images.
+        """
+        self.df.reset_index(inplace=True, drop=True)
+        os.mkdir(data_dir/"train_temp")
+        os.mkdir(data_dir/new_dir)
+        if "height" not in self.df.columns:
+            self.df["height"] = self.df["id"].map(partial(utils.get_image_resolution, dim=0))
+            self.df["width"] = self.df["id"].map(partial(utils.get_image_resolution, dim=1))
+        pool = mp.Pool(mp.cpu_count())
+        pool.map(partial(tf_resizer, scale_size=scale_size, dims=dims),
+                      [self.df.iloc[i] for i in range(len(self.df))])
+        pool.close()
+        os.rename(DATA_DIR/"train", DATA_DIR/new_dir)
+        os.rename(DATA_DIR/"train_temp", DATA_DIR/"train")
 
     def describe(self) -> None:
         """

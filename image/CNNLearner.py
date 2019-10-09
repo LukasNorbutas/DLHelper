@@ -321,6 +321,7 @@ class CNNLearner:
         momentum: Tuple[float, float] = (0.85, 0.95),
         epochs: int = 1,
         dlr: bool = False,
+        verbose: int = 1,
         class_weights: Optional[dict] = None):
         """
         Fit N epochs of one cycle learning (inverted-v-shape learning rate, v-shape momentum batch-by-batch).
@@ -349,7 +350,7 @@ class CNNLearner:
             if isinstance(lr, tuple):
                 print("Note: Discriminative learning rates are disabled, but tuple lr",
                      f"is passed. Use dlr=True for DLR optimizer.")
-        scheduler = TrainCycle(lr=lr_range, momentum=momentum, epochs=epochs,
+        scheduler = TrainCycle(lr=lr, momentum=momentum, epochs=epochs,
                               batch_size=self.data.batch_size,
                               train_set_size=self.data.train_dataframe.shape[0])
 
