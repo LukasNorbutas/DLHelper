@@ -1,7 +1,8 @@
 import tensorflow as tf
 from tensorflow import keras
-import pandas as pd
 import numpy as np
+import pandas as pd
+from sklearn.metrics import classification_report
 
 from pathlib import *
 from typing import *
@@ -424,3 +425,13 @@ class CNNLearner:
         if lr_finder == None:
             lr_finder = self.lr_finder
         return lr_finder.plot_loss(skip_begin=skip_begin, skip_end=skip_end)
+
+    def acc_report(self):
+        """
+        Returns classification report for validation data as a dictionary
+        """
+        preds = self.model.predict_generator(self.data.val, steps=608)
+        preds = preds.argmax(axis=1)
+        y_true = self.data.val_dataframe.label
+        preds = list(preds)[:len(y_true)]
+        return classification_report(y_true=y_true, y_pred=preds, output_dict=True)

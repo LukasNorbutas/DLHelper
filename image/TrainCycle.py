@@ -58,9 +58,9 @@ class TrainCycle(Callback):
 
     def get_lr_mom_lists(self):
         # How many steps are there in total, in stage1 (25%) and stage2
-        n_steps = int(round((self.epochs * self.train_set_size) / self.batch_size) + 4)
+        n_steps = int(round((self.epochs * self.train_set_size) / self.batch_size) + (self.epochs*5))
         n_steps_stage1 = round(n_steps/self.epochs/4)
-        n_steps_stage2 = round(n_steps/self.epochs) - n_steps_stage1 + 4
+        n_steps_stage2 = round(n_steps/self.epochs) - n_steps_stage1 + (self.epochs*5)
         # Get a step list
         iteration_list = np.array(range(n_steps))
         # Stage 1: exponential increase to highest lr in epoch X
