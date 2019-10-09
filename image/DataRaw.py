@@ -371,8 +371,8 @@ class DataRaw:
         pool.map(partial(tf_resizer, scale_size=scale_size, dims=dims),
                       [self.df.iloc[i] for i in range(len(self.df))])
         pool.close()
-        os.rename(DATA_DIR/"train", DATA_DIR/new_dir)
-        os.rename(DATA_DIR/"train_temp", DATA_DIR/"train")
+        os.rename(data_dir/"train", data_dir/new_dir)
+        os.rename(data_dir/"train_temp", data_dir/"train")
 
     def describe(self) -> None:
         """
