@@ -199,9 +199,9 @@ class DataRaw:
                     self.df = pd.concat([self.df, pd.DataFrame(one_hot_cols, columns=lb.classes_)], axis=1)
                     self.df.columns = self.df.columns[:-len(self.label_map)].append(pd.Index(self.label_map.values()))
                 else:
-                    self.label_map = dict(enumerate(self.data.label.unique()))
+                    self.label_map = dict(enumerate(self.df.label.unique()))
                     reverse_dict = dict([(v,k) for k,v in self.label_map.items()])
-                    self.data.label = self.data.label.map(reverse_dict)
+                    self.df.label = self.df.label.map(reverse_dict)
             elif label_map != "auto":
                 self.label_map = label_map
                 if one_hot:

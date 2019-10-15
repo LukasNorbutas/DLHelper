@@ -52,26 +52,26 @@ class Augmentor:
         """
 
         # Tensorflow augmentors
-        image = tf.cond(tf.random.uniform([], 0, 1) > self.h_flip,
+        image = tf.cond(tf.random.uniform([], 0, 1) < self.h_flip,
                         lambda: tf.image.flip_left_right(image),
-                        lambda: tf.identity(image))
+                        lambda: image)
 
-        image = tf.cond(tf.random.uniform([], 0, 1) > self.v_flip,
+        image = tf.cond(tf.random.uniform([], 0, 1) < self.v_flip,
                         lambda: tf.image.flip_up_down(image),
-                        lambda: tf.identity(image))
+                        lambda: image)
 
-        image = tf.cond(tf.random.uniform([], 0, 1) > self.brightness[0],
+        image = tf.cond(tf.random.uniform([], 0, 1) < self.brightness[0],
                         lambda: tf.image.random_brightness(image, max_delta=self.brightness[1]),
-                        lambda: tf.identity(image))
+                        lambda: image)
 
-        image = tf.cond(tf.random.uniform([], 0, 1) > self.contrast[0],
+        image = tf.cond(tf.random.uniform([], 0, 1) < self.contrast[0],
                         lambda: tf.image.random_contrast(image, lower=0.99999-self.contrast[1], upper=1+self.contrast[1]),
-                        lambda: tf.identity(image))
+                        lambda: image)
 
         # Hue
-        image = tf.cond(tf.random.uniform([], 0, 1) > self.hue[0],
+        image = tf.cond(tf.random.uniform([], 0, 1) < self.hue[0],
                        lambda: tf.image.random_hue(image, self.hue[1], seed=None),
-                       lambda: tf.identity(image))
+                       lambda: image)
 
 
         # Third-party module augmentors. Applied using py_func, require to get_shape of the

@@ -70,6 +70,12 @@ class DataSplit:
         self.upsample = upsample
         self.img_dims = None
 
+        # Parallelize cpu operations to Autotune if -1 is provided
+        if self.num_parallel_calls == -1:
+            self.num_parallel_calls = tf.data.experimental.AUTOTUNE
+        if self.prefetch == 1:
+            self.prefetch = tf.data.experimental.AUTOTUNE
+
         # Pipeline for regular RGB images
         self._dataset_constructor(self.val_test_size, self.train_shuffle, self.batch_size, self.aug,
                                  self.downsample, self.upsample, self.prefetch, self.num_parallel_calls)
@@ -232,7 +238,7 @@ class DataSplit:
                                     downsample=self.downsample)
         if self.train_shuffle:
             self.train = self.train.shuffle(self.batch_size)
-        self.train = self.train.repeat().batch(self.batch_size).prefetch(self.prefetch)
+        self.train = self.train.repeat().batch(self.batch_size).prefetch(tf.data.experimental.AUTOTUNE)
         self._steps_calc()
 
 
@@ -264,7 +270,7 @@ class DataSplit:
         if self.train_shuffle:
             self.train = self.train.shuffle(self.batch_size)
 
-        self.train = self.train.repeat().batch(self.batch_size).prefetch(self.prefetch)
-        self.val = self.val.repeat().batch(self.batch_size).prefetch(self.prefetch)
-        self.test = self.test.repeat().batch(self.batch_size).prefetch(self.prefetch)
+        self.train = self.train.repeat().batch(self.batch_size).prefetch(tf.data.experimental.AUTOTUNE)
+        self.val = self.val.repeat().batch(self.batch_size).prefetch(tf.data.experimental.AUTOTUNE)
+        self.test = self.test.repeat().batch(self.batch_size).prefetch(tf.data.experimental.AUTOTUNE)
         self._steps_calc()

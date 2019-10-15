@@ -199,7 +199,7 @@ class CNNLearner:
             dropout = dropout or self.dropout
             output_layer = self.output_layer
             if not load: load = self.previous_weights
-            self.model_creator(base_model=self.transfer_architecture,
+            self._model_creator(base_model=self.transfer_architecture,
                                name=self.name,
                                input_shape=input_shape,
                                output_layer=output_layer,
@@ -430,7 +430,7 @@ class CNNLearner:
         """
         Returns classification report for validation data as a dictionary
         """
-        preds = self.model.predict_generator(self.data.val, steps=608)
+        preds = self.model.predict_generator(self.data.val, steps=self.data.val.steps)
         preds = preds.argmax(axis=1)
         y_true = self.data.val_dataframe.label
         preds = list(preds)[:len(y_true)]
