@@ -220,16 +220,23 @@ class CNNLearner:
 
     def freeze(self,
         n_layers: int,
+        bn_skip: bool = True,
         optimizer: Optional[keras.optimizers.Optimizer] = None,
         lr: Optional[float] = None,
         loss: Optional[keras.losses.Loss] = None,
         metrics: Optional[keras.metrics.Metric] = None):
         """
         Freeze all but n_layers layers of the model (converts to layer.trainable = False).
+        If bn_skip == True, all batchnorm layers are not frozen.
         """
         self.unfreeze()
         for layer in self.model.layers[:-n_layers]:
             layer.trainable = False
+        if bn_skip:
+            batch_norm_layers = ([idx for (idx, layer) in enumerate(self.model._layers) if
+                      str(type(layer)) == "<class 'tensorflow.python.keras.layers.normalization.BatchNormalization'>"])
+            for batch_norm_layer in batch_norm_layers:
+                self.model.layers[batch_norm_layer].trainable = True
         if all([optimizer, lr, loss, metrics]):
             self.compile(optimizer, lr, loss, metrics)
         else:
@@ -265,7 +272,7 @@ class CNNLearner:
         class_weights = max(class_counts.id)/class_counts.id
         class_weights = dict(class_weights)
         if strength != 1.0:
-            class_weights = {k: max(1.0, strength*v) for (k,v) in class_weights if v > 1}
+            class_weights = {k: max(1.0, strength*v) for (k,v) in class_weights.items() if v > 1}
         return class_weights
 
     def fit(self,
@@ -356,9 +363,10 @@ class CNNLearner:
                               train_set_size=self.data.train_dataframe.shape[0])
 
         if class_weights:
-            weights = self.class_weight_calc(self.data.train_dataframe)
-            if isinstance(class_weights, float):
-                weights = {k: v*class_weights for (k,v) in weights if v > 1}
+            if isinstance(class_weights, bool):
+                weights = self.class_weight_calc(self.data.train_dataframe)
+            elif isinstance(class_weights, float):
+                weights = self.class_weight_calc(self.data.train_dataframe, strength=class_weights)
         else:
             weights = None
 

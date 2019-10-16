@@ -132,7 +132,7 @@ class DLR_Adam(keras.optimizers.Optimizer):
         self.amsgrad = amsgrad
         self.param_lrs = param_lrs
 
-        initiation_dict = {v: 1 for (v,k) in self.param_lrs}
+        initiation_dict = {k: 1 for (k,v) in self.param_lrs.items()}
         self.initiation_dict = initiation_dict
 
         print("NOTE: Discriminative LR Adam is used.")
