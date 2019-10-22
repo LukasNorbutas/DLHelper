@@ -59,7 +59,7 @@ class CNNLearner:
         data: DataSplit,
         base_model: keras.Model,
         input_shape: Tuple[int, int, int],
-        output_layer: keras.layers.Dense,
+        output_layer: List[keras.layers.Dense],
         dropout: Optional[float] = 0.0,
         load: Optional[bool] = False):
 
@@ -89,23 +89,31 @@ class CNNLearner:
         base_model: keras.Model,
         input_shape: Tuple[int, int, int],
         dropout: float,
-        output_layer: keras.layers.Dense,
+        output_layer: List[keras.layers.Dense],
         load: bool) -> keras.Model:
         """
         Create a Keras model based on class initialization arguments and save model's architecture.
         """
         self.base_model = base_model(include_top=False, input_shape=(input_shape))
-        x = keras.layers.concatenate(
+        concat_layer = keras.layers.concatenate(
             [
                 keras.layers.GlobalAvgPool2D()(self.base_model.output),
                 keras.layers.GlobalMaxPool2D()(self.base_model.output),
             ]
         )
-        x = keras.layers.BatchNormalization()(x)
-        x = keras.layers.Dropout(dropout)(x)
-        x = output_layer(x)
 
-        self.model = keras.models.Model(inputs=self.base_model.inputs, outputs=x)
+        branch_1 = keras.layers.BatchNormalization()(concat_layer)
+        branch_1 = keras.layers.Dropout(dropout)(branch_1)
+        output_1 = self.output_layer[0](branch_1)
+
+        if len(self.output_layer) > 1:
+            branch_2 = keras.layers.BatchNormalization()(concat_layer)
+            branch_2 = keras.layers.Dropout(dropout)(branch_2)
+            output_2 = self.output_layer[1](branch_2)
+            self.model = keras.models.Model(inputs=self.base_model.inputs, outputs=[output_1, output_2])
+
+        if len(self.output_layer) == 1:
+            self.model = keras.models.Model(inputs=self.base_model.inputs, outputs=output_1)
 
         if load:
             self.load(load)
@@ -133,7 +141,8 @@ class CNNLearner:
         optimizer: keras.optimizers.Optimizer,
         lr: Union[float, Tuple[float], Tuple[float, float]],
         loss: keras.losses.Loss,
-        metrics: keras.metrics.Metric) -> None:
+        loss_weights: Optional[List[float]] = None,
+        metrics: List[keras.metrics.Metric] = None) -> None:
         """
         Initial compilation of the created model. Can later be recompiled usign self.recompile.
         Applies discriminative learning rates for the model if LR is passed as a tuple, and simple
@@ -157,10 +166,12 @@ class CNNLearner:
         self.lr = lr
         self.loss = loss
         self.metrics = metrics
+        self.loss_weights = loss_weights
         if isinstance(lr, float):
             self.model.compile(
                 optimizer=optimizer(lr=lr),
                 loss=loss,
+                loss_weights=loss_weights,
                 metrics=metrics,
             )
         elif isinstance(lr, tuple):
@@ -172,6 +183,7 @@ class CNNLearner:
             self.model.compile(
                 optimizer=DLR_Adam(param_lrs=multipliers, learning_rate=lr),
                 loss=loss,
+                loss_weights=loss_weights,
                 metrics=metrics,
             )
 
@@ -181,6 +193,7 @@ class CNNLearner:
         optimizer: Optional[keras.optimizers.Optimizer] = None,
         lr: Optional[Union[float, Tuple[float], Tuple[float, float]]] = None,
         loss: Optional[keras.losses.Loss] = None,
+        loss_weights: Optional[List[float]] = None,
         metrics: Optional[keras.metrics.Metric] = None,
         dropout: Optional[float] = None,
         load: Optional[str] = None) -> None:
@@ -208,12 +221,14 @@ class CNNLearner:
         if not optimizer: optimizer = self.optimizer
         if not lr: lr = self.lr
         if not loss: loss = self.loss
+        if not loss_weights: loss_weights = self.loss_weights
         if not metrics: metrics = self.metrics
 
         self.compile(
             lr = lr,
             optimizer=optimizer,
             loss=loss,
+            loss_weights=loss_weights,
             metrics=metrics
         )
 
@@ -221,10 +236,7 @@ class CNNLearner:
     def freeze(self,
         n_layers: int,
         bn_skip: bool = True,
-        optimizer: Optional[keras.optimizers.Optimizer] = None,
-        lr: Optional[float] = None,
-        loss: Optional[keras.losses.Loss] = None,
-        metrics: Optional[keras.metrics.Metric] = None):
+        ):
         """
         Freeze all but n_layers layers of the model (converts to layer.trainable = False).
         If bn_skip == True, all batchnorm layers are not frozen.
@@ -237,15 +249,6 @@ class CNNLearner:
                       str(type(layer)) == "<class 'tensorflow.python.keras.layers.normalization.BatchNormalization'>"])
             for batch_norm_layer in batch_norm_layers:
                 self.model.layers[batch_norm_layer].trainable = True
-        if all([optimizer, lr, loss, metrics]):
-            self.compile(optimizer, lr, loss, metrics)
-        else:
-            try:
-                self.compile(self.optimizer, self.lr, self.loss, self.metrics)
-                print(f"All but {n_layers} layers frozen. Compilation arguments not provided",
-                      "model recompiled with previous settings.")
-            except:
-                print("This model has not been compiled before. Please compile it before fitting.")
 
     def unfreeze(self):
         """
@@ -278,7 +281,7 @@ class CNNLearner:
     def fit(self,
         epochs: int,
         name: str,
-        lr: Optional[Union[float, Tuple[float], Tuple[float, float]]],
+        lr: Optional[Union[float, Tuple[float], Tuple[float, float]]] = None,
         class_weights: Optional[dict] = None,
         verbose: Optional[int] = 1
         ):
@@ -286,7 +289,7 @@ class CNNLearner:
         Do N epochs of training. Saves best model weights to an h5 file. Uses early stopping
         and ReduceLROnPlateau callbacks. Stores the output weights file to self.previous_weights.
         """
-        if lr:
+        if lr != None:
             self.recompile(lr=lr)
 
         if class_weights:

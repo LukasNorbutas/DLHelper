@@ -130,8 +130,8 @@ class DataRaw:
         df = self._extension_check(df)
         df = self._prepend_parent_dirs(df)
         if get_resolution:
-            df["height"] = df["id"].map(partial(utils.get_image_resolution, dim=0))
-            df["width"] = df["id"].map(partial(utils.get_image_resolution, dim=1))
+            df["height"] = df["id"].map(partial(get_image_resolution, dim=0))
+            df["width"] = df["id"].map(partial(get_image_resolution, dim=1))
         df.reset_index(inplace=True, drop=True)
         return df
 
@@ -153,16 +153,16 @@ class DataRaw:
                 "label1" label.
             get_resolution: add "height" and "weight" dimensions for each image to the dataframe (takes some time).
         """
-        df = pd.DataFrame({"id": utils.file_getter(self.path+'/train')})
+        df = pd.DataFrame({"id": file_getter(directory=self.path+'/train')})
         if y_source == "filenames":
             if y_regex == "":
                 raise ValueError("Please enter a y_regex value to mach the filenames.")
             df["label"] = df["id"].str.extract(y_regex)
         elif y_source == "dirnames":
-            df["label"] = df["id"].map(lambda x: re.match('.*/(.*)/.*$', x).group(1))
+            df["label"] = df["id"].map(lambda x: re.match('.*/train/(.*)/.*$', x).group(1))
         if get_resolution:
-            df["height"] = df["id"].map(partial(utils.get_image_resolution, dim=0))
-            df["width"] = df["id"].map(partial(utils.get_image_resolution, dim=1))
+            df["height"] = df["id"].map(partial(get_image_resolution, dim=0))
+            df["width"] = df["id"].map(partial(get_image_resolution, dim=1))
         df.reset_index(inplace=True, drop=True)
         return df
 
@@ -288,8 +288,8 @@ class DataRaw:
         """
         df = self.df.copy()
         if "height" not in df.columns:
-            df["height"] = df["id"].map(partial(utils.get_image_resolution, dim=0))
-            df["width"] = df["id"].map(partial(utils.get_image_resolution, dim=1))
+            df["height"] = df["id"].map(partial(get_image_resolution, dim=0))
+            df["width"] = df["id"].map(partial(get_image_resolution, dim=1))
         df_copy = pd.DataFrame(
             df.loc[(df["height"]/df["width"] > 2) |
                         (df["height"]/df["width"] < 0.6), "id"]
@@ -365,8 +365,8 @@ class DataRaw:
         os.mkdir(data_dir/"train_temp")
         os.mkdir(data_dir/new_dir)
         if "height" not in self.df.columns:
-            self.df["height"] = self.df["id"].map(partial(utils.get_image_resolution, dim=0))
-            self.df["width"] = self.df["id"].map(partial(utils.get_image_resolution, dim=1))
+            self.df["height"] = self.df["id"].map(partial(get_image_resolution, dim=0))
+            self.df["width"] = self.df["id"].map(partial(get_image_resolution, dim=1))
         pool = mp.Pool(mp.cpu_count())
         pool.map(partial(tf_resizer, scale_size=scale_size, dims=dims),
                       [self.df.iloc[i] for i in range(len(self.df))])

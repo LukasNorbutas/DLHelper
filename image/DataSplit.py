@@ -56,6 +56,7 @@ class DataSplit:
         upsample: float = 0.,
         batch_size: int = 8,
         train_shuffle: bool = True,
+        multi_labels: List[str] = None,
         prefetch: int = 1,
         num_parallel_calls: int = -1):
 
@@ -69,6 +70,7 @@ class DataSplit:
         self.downsample = downsample
         self.upsample = upsample
         self.img_dims = None
+        self.multi_output = multi_labels
 
         # Parallelize cpu operations to Autotune if -1 is provided
         if self.num_parallel_calls == -1:
@@ -109,6 +111,7 @@ class DataSplit:
         self.train_dataframe = self.data.df[self.data.df.id.isin(train_images)]
         if upsample > 0:
             self.train_dataframe = self._upsampler(self.train_dataframe, upsample)
+        self.train_dataframe = self.train_dataframe.sample(frac=1)
 
         self.val_dataframe = self.data.df[self.data.df.id.isin(val_images)]
         self.test_dataframe = self.data.df[self.data.df.id.isin(test_images)]
@@ -141,8 +144,17 @@ class DataSplit:
             img_ds = img_ds.map(lambda x: resize(x), num_parallel_calls=self.num_parallel_calls)
         if aug:
             img_ds = img_ds.map(aug, num_parallel_calls=self.num_parallel_calls)
+
         label_ds = tf.data.Dataset.from_tensor_slices(data.label.values)
-        ds = tf.data.Dataset.zip((img_ds, label_ds))
+
+        if self.multi_output == None:
+            ds = tf.data.Dataset.zip((img_ds, label_ds))
+        else:
+            extra_labels = ()
+            for i in range(len(self.multi_output)):
+                extra_labels = extra_labels + (data[self.multi_output[i]].values,)
+                extra_labels = tf.data.Dataset.from_tensor_slices(*extra_labels)
+            ds = tf.data.Dataset.zip((img_ds, {"output_1": label_ds, "output_2": extra_labels}))
         if downsample:
             resampler = self._downsampler(target_dist=downsample)
             ds = ds.apply(resampler).map(lambda x,y: y)
@@ -182,7 +194,7 @@ class DataSplit:
             rows = math.ceil(self.batch_size * n_batches / cols)
         _, ax = plt.subplots(rows, cols, figsize=(3 * cols, 3 * rows))
         i = 0
-        for x_batch, y_batch in self.train.take(n_batches):
+        for x_batch, y_batch, *_ in self.train.take(n_batches):
             for (x, y) in zip(x_batch.numpy(), y_batch.numpy()):
                 idx = (i // cols, i % cols) if rows > 1 else i % cols
                 ax[idx].axis("off")
