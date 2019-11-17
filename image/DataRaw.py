@@ -14,8 +14,8 @@ import pandas as pd
 import seaborn as sns
 import re
 
-from utils.tf_resizer import tf_resizer
-from utils.utils import *
+from .utils.tf_resizer import tf_resizer
+from .utils.utils import *
 
 
 class DataRaw:
