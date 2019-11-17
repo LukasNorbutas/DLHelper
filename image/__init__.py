@@ -6,4 +6,4 @@ from .discriminative_lr import *
 from .LearningRateFinder import LearningRateFinder
 from .Resizer import Resizer
 from .TrainCycle import TrainCycle
-from .utils.utils import *
+from utils.utils import *
