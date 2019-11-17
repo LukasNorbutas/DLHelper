@@ -4,7 +4,7 @@ from pathlib import *
 import os
 from .get_image_size import get_image_size
 
-def file_getter(self,
+def file_getter(
     directory: str) -> List[str]:
     """
     Scan directory and its sub-directories for files and return a list with paths to each of them.
@@ -14,10 +14,10 @@ def file_getter(self,
     """
     files = []
     for (path, subdirs, filenames) in os.walk(directory):
-        files += [os.path.join(directory, file) for file in filenames]
+        files += [os.path.join(path, file) for file in filenames]
     return files
 
-def get_image_resolution(self,
+def get_image_resolution(
     filename: str,
     dim: str = "both") -> Union[int, Tuple[int, int]]:
     """
@@ -27,10 +27,10 @@ def get_image_resolution(self,
         filename: path to the image file (e.g. "/data/train/image_1.png")
         dim: dimension(s) of the image to retrieve. "height"/"width"/"both"
     """
-    height, width = get_image_size.get_image_size(filename)
+    height, width = get_image_size(filename)
     if dim == "both":
         return height, width
-    elif dim == "height":
+    elif dim == 1:
         return height
-    else:
+    elif dim == 0:
         return width

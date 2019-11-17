@@ -95,25 +95,25 @@ class CNNLearner:
         Create a Keras model based on class initialization arguments and save model's architecture.
         """
         self.base_model = base_model(include_top=False, input_shape=(input_shape))
-        concat_layer = keras.layers.concatenate(
+        self.concat_layer = keras.layers.concatenate(
             [
                 keras.layers.GlobalAvgPool2D()(self.base_model.output),
                 keras.layers.GlobalMaxPool2D()(self.base_model.output),
             ]
         )
 
-        branch_1 = keras.layers.BatchNormalization()(concat_layer)
-        branch_1 = keras.layers.Dropout(dropout)(branch_1)
-        output_1 = self.output_layer[0](branch_1)
+        self.dropout = keras.layers.Dropout(dropout)(self.concat_layer)
+
+        self.branch_1 = keras.layers.BatchNormalization()(self.dropout)
+        self.output_1 = self.output_layer[0](self.branch_1)
 
         if len(self.output_layer) > 1:
-            branch_2 = keras.layers.BatchNormalization()(concat_layer)
-            branch_2 = keras.layers.Dropout(dropout)(branch_2)
-            output_2 = self.output_layer[1](branch_2)
-            self.model = keras.models.Model(inputs=self.base_model.inputs, outputs=[output_1, output_2])
+            self.branch_2 = keras.layers.BatchNormalization()(self.dropout)
+            self.output_2 = self.output_layer[1](self.branch_2)
+            self.model = keras.models.Model(inputs=self.base_model.inputs, outputs=[self.output_1, self.output_2])
 
         if len(self.output_layer) == 1:
-            self.model = keras.models.Model(inputs=self.base_model.inputs, outputs=output_1)
+            self.model = keras.models.Model(inputs=self.base_model.inputs, outputs=self.output_1)
 
         if load:
             self.load(load)
@@ -135,7 +135,6 @@ class CNNLearner:
         Load model's weights.
         """
         self.model.load_weights(f"{str(self.weights_path)}/{str(name)}.h5")
-        print(f"Note: {name} are loaded.")
 
     def compile(self,
         optimizer: keras.optimizers.Optimizer,
@@ -196,7 +195,7 @@ class CNNLearner:
         loss_weights: Optional[List[float]] = None,
         metrics: Optional[keras.metrics.Metric] = None,
         dropout: Optional[float] = None,
-        load: Optional[str] = None) -> None:
+        load: Optional[str] = "") -> None:
         """
         Recompile model after initial compilation and training with a different optimizer,
         input shape, etc. Updates CNNLearner class variables with newly passed arguments
@@ -206,12 +205,13 @@ class CNNLearner:
         Note: if weights for the "load" argument are not provided, the most recent weights in
         self.previous_weights are loaded.
         """
+
         if (input_shape is not None) | (dropout is not None):
             if dropout:
                 self.dropout = dropout
             dropout = dropout or self.dropout
             output_layer = self.output_layer
-            if not load: load = self.previous_weights
+            if load == "": load = self.previous_weights
             self._model_creator(base_model=self.transfer_architecture,
                                name=self.name,
                                input_shape=input_shape,
@@ -327,7 +327,6 @@ class CNNLearner:
         self.load(name)
 
     def fit_one_cycle(self,
-        lr: Tuple[float, float],
         name: str,
         momentum: Tuple[float, float] = (0.85, 0.95),
         epochs: int = 1,

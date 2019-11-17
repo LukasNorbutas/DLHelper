@@ -24,10 +24,12 @@ class Augmentor:
         brightness: Tuple[float, float] = (0., 0.),
         contrast: Tuple[float, float] = (0., 0.),
         hue: Tuple[float, float] = (0., 0.),
+        sharpness: Tuple[float, float] = (0., 0.),
         blur: Tuple[float, Tuple[float, float]] = (0., 0.),
         warp: float = 0.,
         zoom: Tuple[float, float] = (0., 0.),
         rotate: Tuple[float, float] = (0., 0.),
+        dropout: Tuple[float, float] = (0., 0.),
         pipeline: Optional[List[Any]] = None):
 
         self.h_flip = h_flip
@@ -35,10 +37,12 @@ class Augmentor:
         self.brightness = brightness
         self.contrast = contrast
         self.hue = hue
+        self.sharpness = sharpness
         self.blur = blur
         self.warp = warp
         self.zoom = zoom
         self.rotate = rotate
+        self.dropout = dropout
         self.pipeline = pipeline
 
     def __call__(self,
@@ -86,6 +90,13 @@ class Augmentor:
             image = tf.py_function(augmenter.augment_images, [img_exp], Tout=[tf.float32])
             image = tf.squeeze(image)
 
+        # Sharpen
+        if self.sharpness[0]:
+            augmenter = iaa.Sometimes(self.sharpness[0], iaa.Sharpen(alpha=(0, self.sharpness[1]), lightness=(0.75, 1.5)))
+            img_exp = tf.expand_dims(image, axis=0)
+            image = tf.py_function(augmenter.augment_images, [img_exp], Tout=[tf.float32])
+            image = tf.squeeze(image)
+
         # Perspective transform
         if self.warp:
             def augmenter(image):
@@ -107,6 +118,13 @@ class Augmentor:
             augmenter = iaa.Sometimes(self.rotate[0],
                                       iaa.Affine(rotate=(-self.rotate[1], self.rotate[1]),
                                                 mode="edge"))
+            img_exp = tf.expand_dims(image, axis=0)
+            image = tf.py_function(augmenter.augment_images, [img_exp], Tout=[tf.float32])
+            image = tf.squeeze(image)
+
+        # Dropout
+        if self.dropout[0]:
+            augmenter = iaa.Sometimes(self.dropout[0], iaa.CoarseDropout(p=self.dropout[1], size_percent=0.10))
             img_exp = tf.expand_dims(image, axis=0)
             image = tf.py_function(augmenter.augment_images, [img_exp], Tout=[tf.float32])
             image = tf.squeeze(image)

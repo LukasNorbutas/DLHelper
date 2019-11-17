@@ -89,21 +89,30 @@ class TrainCycle(Callback):
         logs = logs or {}
         self.lr_list, self.mom_list = self.get_lr_mom_lists()
         K.set_value(self.model.optimizer.lr, self.lr[0])
-        K.set_value(self.model.optimizer.beta_1, self.momentum[1])
+        try:
+            K.set_value(self.model.optimizer.beta_1, self.momentum[1])
+        except:
+            K.set_value(self.model.optimizer.momentum, self.momentum[1])
 
     def on_batch_end(self, batch, logs=None):
         logs = logs or {}
         self.iterations += 1
 
         self.history.setdefault('lr', []).append(K.get_value(self.model.optimizer.lr))
-        self.history.setdefault('momentum', []).append(K.get_value(self.model.optimizer.beta_1))
+        try:
+            self.history.setdefault('momentum', []).append(K.get_value(self.model.optimizer.momentum))
+        except:
+            self.history.setdefault('momentum', []).append(K.get_value(self.model.optimizer.beta_1))
         self.history.setdefault('iterations', []).append(self.iterations)
 
         for k, v in logs.items():
             self.history.setdefault(k, []).append(v)
 
         K.set_value(self.model.optimizer.lr, self.lr_list[self.iterations])
-        K.set_value(self.model.optimizer.beta_1, self.mom_list[self.iterations])
+        try:
+            K.set_value(self.model.optimizer.momentum, self.mom_list[self.iterations])
+        except:
+            K.set_value(self.model.optimizer.beta_1, self.mom_list[self.iterations])
 
     def plot_lr(self):
         plt.xlabel('Training step')

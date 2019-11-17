@@ -12,5 +12,5 @@ def tf_resizer(inp_img_row, scale_size, dims):
     img = tf.cast(img, tf.uint8)
     img = tf.image.encode_jpeg(img, quality=95, format='rgb', optimize_size=True)
     new_path = inp_img_row.id.split("train")
-    img = tf.io.write_file(new_path[0]+"train_temp"+new_path[1], img)
+    tf.io.write_file(new_path[0]+"train_temp"+new_path[1], img)
     return None
